@@ -4,7 +4,7 @@ A minimal AI chat app with multiple model support with OpenAI Compatible API, st
 
 ## Quick Start (Download from Releases)
 
-The easiest way: download the binary from [GitHub Releases](https://github.com/your-username/simple-ai-chat/releases).
+The easiest way: download the binary from [GitHub Releases](https://github.com/BlankPage-Ctrl/simple-ai-chat/releases).
 
 ```bash
 # Linux
