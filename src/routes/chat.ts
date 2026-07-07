@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { streamText, type ModelMessage } from "ai";
 import { chatHistory, activeAbortControllers, CHAT_ID, getModel } from "../store";
+import { config } from "../config";
 
 const chat = new Hono();
 
@@ -20,10 +21,15 @@ chat.post("/", async (c) => {
 
     const model = getModel(body.model);
 
+    const timeout: { totalMs?: number; chunkMs?: number } = {};
+    if (config.timeoutTotal) timeout.totalMs = config.timeoutTotal;
+    if (config.timeoutChunk) timeout.chunkMs = config.timeoutChunk;
+
     const result = streamText({
       model,
       messages: history,
       abortSignal: abortController.signal,
+      ...(config.timeoutTotal || config.timeoutChunk ? { timeout } : {}),
       onFinish: ({ text }) => {
         history.push({ role: "assistant", content: text });
         chatHistory.set(CHAT_ID, history);

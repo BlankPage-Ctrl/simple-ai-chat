@@ -33,6 +33,7 @@ const port = Number(process.env.PORT) || 3000;
 Bun.serve({
   port,
   fetch: app.fetch,
+  idleTimeout: config.idleTimeout,
 });
 
 console.log(`AI Chat server running on http://localhost:${port}`);

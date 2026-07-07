@@ -25,11 +25,16 @@ Open `http://localhost:3000` in your browser.
 | `--default-base-url` | `AI_BASE_URL` | `"https://api.example.com/v1"` | API base URL |
 | `--model-id` | `AI_MODEL_ID` | `"/default-model/somemodelid"` | Model identifier |
 | `--default-api-key` | `AI_API_KEY` | `"default-api-key"` | API key |
+| `--timeout-total` | `AI_TIMEOUT_TOTAL` | ``0`` | Total timeout per response (`0` = disabled) |
+| `--timeout-chunk` | `AI_TIMEOUT_CHUNK` | ``0`` | Timeout between stream chunks (`0` = disabled) |
+| `--idle-timeout` | `IDLE_TIMEOUT` | ``4m`` (`240`) | Bun HTTP server idle timeout in seconds (max `255`, `0` = disabled) |
+
+> **Duration format:** Values support human-readable strings like `"30s"`, `"5m"`, `"2h"`, or raw ms numbers (`"120000"`). Set to `0`, `"none"`, `"off"`, or `"disabled"` to disable a timeout.
 
 Full example:
 
 ```bash
-./simple-chat --port=8080 --default-name="GPT-4o" --model-id="gpt-4o" --default-base-url="https://api.openai.com/v1" --default-api-key="sk-123456789"
+./simple-chat --port=8080 --default-name="GPT-4o" --model-id="gpt-4o" --default-base-url="https://api.openai.com/v1" --default-api-key="sk-123456789" --timeout-total="5m" --timeout-chunk="30s" --idle-timeout="10m"
 ```
 
 ## Development
