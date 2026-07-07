@@ -6,6 +6,13 @@ out
 dist
 *.tgz
 
+# auto-generated UI embed
+src/ui.assets.ts
+
+# compiled binaries
+simple-chat
+simple-chat.exe
+
 # code coverage
 coverage
 *.lcov

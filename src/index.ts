@@ -5,8 +5,8 @@ import { models, setDefaultModelName } from "./store";
 import healthRoutes from "./routes/health";
 import chatRoutes from "./routes/chat";
 import modelRoutes from "./routes/models";
+import { serveAsset } from "./ui.assets";
 
-// Initialize default model from CLI args / env
 const defaultModel = createDefaultModel();
 models.set(defaultModel.name, defaultModel);
 setDefaultModelName(defaultModel.name);
@@ -19,6 +19,15 @@ app.route("/api/health", healthRoutes);
 app.route("/api/chat", chatRoutes);
 app.route("/api/models", modelRoutes);
 
+app.get("*", (c) => {
+  const url = new URL(c.req.url);
+  let path = url.pathname;
+  if (path === "/") path = "/index.html";
+  const res = serveAsset(path);
+  if (res) return res;
+  return serveAsset("/index.html") ?? new Response("Not Found", { status: 404 });
+});
+
 const port = Number(process.env.PORT) || 3000;
 
 Bun.serve({
@@ -28,12 +37,3 @@ Bun.serve({
 
 console.log(`AI Chat server running on http://localhost:${port}`);
 console.log(`Default model: ${defaultModel.name} (${defaultModel.modelId})`);
-console.log("\nEndpoints:");
-console.log("  POST   /api/chat          - Send message (SSE stream)");
-console.log("  DELETE /api/chat          - Clear chat history");
-console.log("  GET    /api/chat/history   - Get chat history");
-console.log("  POST   /api/chat/stop     - Stop current response");
-console.log("  GET    /api/models        - List all models");
-console.log("  POST   /api/models        - Add a new model");
-console.log("  DELETE /api/models/:name  - Remove a model");
-console.log("  GET    /api/health        - Health check");

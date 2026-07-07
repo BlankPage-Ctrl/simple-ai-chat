@@ -5,7 +5,12 @@
   "private": true,
   "scripts": {
     "start": "bun src/index.ts",
-    "dev": "bun --hot src/index.ts"
+    "dev": "bun --hot src/index.ts",
+    "build:ui": "bun --cwd ui build",
+    "build:embed": "bun scripts/embed-ui.ts",
+    "build:linux": "bun run build:ui && bun run build:embed && bun build --compile --target=bun-linux-x64 --outfile=simple-chat ./src/index.ts",
+    "build:windows": "bun run build:ui && bun run build:embed && bun build --compile --target=bun-windows-x64 --outfile=simple-chat.exe ./src/index.ts",
+    "build": "bun run build:linux"
   },
   "devDependencies": {
     "@types/bun": "latest"
