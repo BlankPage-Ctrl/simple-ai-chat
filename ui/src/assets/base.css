@@ -1,0 +1,85 @@
+:root {
+  --cream-50: #FFFDF7;
+  --cream-100: #FFF8F0;
+  --cream-200: #FDF2E3;
+  --cream-300: #F5E6D0;
+  --cream-400: #EDE0D0;
+
+  --amber-300: #F0D6A8;
+  --amber-500: #C58B4A;
+  --amber-600: #B0773A;
+  --amber-700: #D97706;
+
+  --brown-700: #3D2E1E;
+  --brown-500: #7A6B5B;
+  --brown-300: #A89888;
+
+  --color-bg: var(--cream-100);
+  --color-bg-soft: var(--cream-50);
+  --color-bg-mute: var(--cream-200);
+  --color-surface: #FFFFFF;
+  --color-surface-mate: var(--cream-50);
+  --color-user-bubble: var(--amber-700);
+  --color-user-bubble-text: #FFFFFF;
+  --color-ai-bubble: #FFFFFF;
+
+  --color-primary: var(--amber-500);
+  --color-primary-hover: var(--amber-600);
+  --color-accent: var(--amber-700);
+
+  --color-text: var(--brown-700);
+  --color-text-soft: var(--brown-500);
+  --color-text-muted: var(--brown-300);
+
+  --color-border: var(--cream-400);
+  --color-ring: var(--amber-300);
+  --color-destructive: #DC2626;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Varela Round', sans-serif;
+  line-height: 1.3;
+}
+
+#app {
+  height: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
