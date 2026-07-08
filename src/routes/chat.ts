@@ -13,7 +13,12 @@ chat.post("/", async (c) => {
     }
 
     const history = chatHistory.get(CHAT_ID) || [];
+
     history.push({ role: "user", content: body.message });
+
+    const assistantIndex = history.length;
+    history.push({ role: "assistant", content: "" });
+
     chatHistory.set(CHAT_ID, history);
 
     const abortController = new AbortController();
@@ -25,18 +30,37 @@ chat.post("/", async (c) => {
     if (config.timeoutTotal) timeout.totalMs = config.timeoutTotal;
     if (config.timeoutChunk) timeout.chunkMs = config.timeoutChunk;
 
+    let accumulatedText = "";
+    let chunkCount = 0;
+    const SAVE_EVERY_N_CHUNKS = 7;
+
     const result = streamText({
       model,
-      messages: history,
+      messages: history.slice(0, -1),
       abortSignal: abortController.signal,
       ...(config.timeoutTotal || config.timeoutChunk ? { timeout } : {}),
+      onChunk: ({ chunk }) => {
+        if (chunk.type === "text-delta") {
+          accumulatedText += chunk.text;
+          chunkCount++;
+
+          if (chunkCount % SAVE_EVERY_N_CHUNKS === 0) {
+            history[assistantIndex]!.content = accumulatedText;
+            chatHistory.set(CHAT_ID, history);
+          }
+        }
+      },
       onFinish: ({ text }) => {
-        history.push({ role: "assistant", content: text });
+        history[assistantIndex]!.content = text || accumulatedText;
         chatHistory.set(CHAT_ID, history);
         activeAbortControllers.delete(CHAT_ID);
       },
       onError: (error) => {
         console.error("Stream error:", error);
+        if (accumulatedText) {
+          history[assistantIndex]!.content = accumulatedText;
+          chatHistory.set(CHAT_ID, history);
+        }
         activeAbortControllers.delete(CHAT_ID);
       },
     });
