@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { UIMessage } from 'ai'
+import { deriveKey, encrypt, decrypt } from '../crypto'
 
 export interface AIModel {
   name: string
@@ -38,6 +39,9 @@ export const useChatStore = defineStore('chat', () => {
 
   let abortController: AbortController | null = null
 
+  let cryptoKey: CryptoKey | null = null
+  const encryptionEnabled = ref(false)
+
   function cnv(msg: { role: string; content: string }): ChatMessage {
     return {
       role: msg.role as 'user' | 'assistant',
@@ -46,6 +50,16 @@ export const useChatStore = defineStore('chat', () => {
       parts: [{ type: 'text', text: msg.content, state: 'done' }],
       reasoningText: '',
     }
+  }
+
+  async function setKey(password: string) {
+    cryptoKey = await deriveKey(password)
+    encryptionEnabled.value = true
+  }
+
+  function clearKey() {
+    cryptoKey = null
+    encryptionEnabled.value = false
   }
 
   async function loadModels() {
@@ -64,7 +78,16 @@ export const useChatStore = defineStore('chat', () => {
   async function loadHistory() {
     try {
       const res = await fetch('/api/chat/history')
-      const data = await res.json() as { messages: Array<{ role: string; content: string }> }
+      const raw = await res.json() as { messages?: Array<{ role: string; content: string }>; encrypted?: string }
+
+      let data: { messages: Array<{ role: string; content: string }> }
+      if (raw.encrypted && cryptoKey) {
+        const decrypted = await decrypt(raw.encrypted, cryptoKey)
+        data = JSON.parse(decrypted)
+      } else {
+        data = raw as { messages: Array<{ role: string; content: string }> }
+      }
+
       messages.value = (data.messages || []).map(cnv)
     } catch {
       messages.value = []
@@ -103,13 +126,23 @@ export const useChatStore = defineStore('chat', () => {
     abortController = new AbortController()
 
     try {
+      const payload = JSON.stringify({
+        message: trimmed,
+        model: selectedModel.value || undefined,
+      })
+
+      let body: string
+      if (cryptoKey) {
+        const encrypted = await encrypt(payload, cryptoKey)
+        body = JSON.stringify({ encrypted })
+      } else {
+        body = payload
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: trimmed,
-          model: selectedModel.value || undefined,
-        }),
+        body,
         signal: abortController.signal,
       })
 
@@ -137,10 +170,23 @@ export const useChatStore = defineStore('chat', () => {
         for (const line of rawLines) {
           if (!line.startsWith('data: ')) continue
           const raw = line.slice(6).trim()
-          if (!raw || raw === '[DONE]') continue
+          if (!raw) continue
+
+          let parsed: string
+          if (cryptoKey) {
+            try {
+              parsed = await decrypt(raw, cryptoKey)
+            } catch {
+              continue
+            }
+          } else {
+            parsed = raw
+          }
+
+          if (parsed === '[DONE]') continue
 
           try {
-            const chunk = JSON.parse(raw)
+            const chunk = JSON.parse(parsed)
             const msg = snap()
 
             switch (chunk.type) {
@@ -269,6 +315,9 @@ export const useChatStore = defineStore('chat', () => {
     models,
     selectedModel,
     error,
+    encryptionEnabled,
+    setKey,
+    clearKey,
     loadModels,
     loadHistory,
     sendMessage,
