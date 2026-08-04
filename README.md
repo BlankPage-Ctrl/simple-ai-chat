@@ -1,6 +1,6 @@
 # Simple AI Chat
 
-A minimal AI chat app with multiple model support with OpenAI Compatible API, streaming responses, and single-binary deployment.
+A minimal AI chat app with multiple model support with OpenAI Compatible API, streaming responses, AES-256-GCM encrypted communication, and single-binary deployment.
 
 ## Quick Start (Download from Releases)
 
@@ -28,13 +28,24 @@ Open `http://localhost:3000` in your browser.
 | `--timeout-total` | `AI_TIMEOUT_TOTAL` | ``0`` | Total timeout per response (`0` = disabled) |
 | `--timeout-chunk` | `AI_TIMEOUT_CHUNK` | ``0`` | Timeout between stream chunks (`0` = disabled) |
 | `--idle-timeout` | `IDLE_TIMEOUT` | ``4m`` (`240`) | Bun HTTP server idle timeout in seconds (max `255`, `0` = disabled) |
+| `--key` | `CHAT_KEY` | `` | Encryption key (required for backend-only/frontend-only) |
+| `--backend-only` | | | Run API server only (requires `--key`) |
+| `--frontend-only` | | | Run frontend proxy only (requires `--key` + `--backend`) |
+| `--backend` | `CHAT_BACKEND_URL` | `` | Remote backend URL for frontend-only mode |
 
 > **Duration format:** Values support human-readable strings like `"30s"`, `"5m"`, `"2h"`, or raw ms numbers (`"120000"`). Set to `0`, `"none"`, `"off"`, or `"disabled"` to disable a timeout.
 
-Full example:
+Full examples:
 
 ```bash
+# Combined mode (no encryption)
 ./simple-chat --port=8080 --default-name="GPT-4o" --model-id="gpt-4o" --default-base-url="https://api.openai.com/v1" --default-api-key="sk-123456789" --timeout-total="5m" --timeout-chunk="30s" --idle-timeout="10m"
+
+# Backend only (encrypted)
+./simple-chat --backend-only --key="mysecret" --default-base-url="http://localhost:11434/v1" --model-id="llama3"
+
+# Frontend only (encrypted, proxy to remote backend)
+./simple-chat --frontend-only --key="mysecret" --backend="https://your-backend.ngrok.io" --port=5173
 ```
 
 ## Development

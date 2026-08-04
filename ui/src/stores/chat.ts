@@ -29,6 +29,24 @@ function genId(): string {
   return `msg_${nextId++}`
 }
 
+const BACKEND_URL = 'https://example.com'
+
+const NGROK_HEADERS = { 'ngrok-skip-browser-warning': '1' }
+
+const SYSTEM_PROMPT_STORAGE_KEY = 'simple-chat-system-prompt'
+
+function loadSystemPrompt(): string {
+  try {
+    return localStorage.getItem(SYSTEM_PROMPT_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function apiUrl(path: string): string {
+  return BACKEND_URL ? `${BACKEND_URL}${path}` : path
+}
+
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
   const isLoading = ref(false)
@@ -36,6 +54,7 @@ export const useChatStore = defineStore('chat', () => {
   const models = ref<AIModel[]>([])
   const selectedModel = ref('')
   const error = ref('')
+  const systemPrompt = ref(loadSystemPrompt())
 
   let abortController: AbortController | null = null
 
@@ -51,7 +70,6 @@ export const useChatStore = defineStore('chat', () => {
       reasoningText: '',
     }
   }
-
   async function setKey(password: string) {
     cryptoKey = await deriveKey(password)
     encryptionEnabled.value = true
@@ -62,9 +80,16 @@ export const useChatStore = defineStore('chat', () => {
     encryptionEnabled.value = false
   }
 
+  function setSystemPrompt(text: string) {
+    systemPrompt.value = text
+    try {
+      localStorage.setItem(SYSTEM_PROMPT_STORAGE_KEY, text)
+    } catch { /* */ }
+  }
+
   async function loadModels() {
     try {
-      const res = await fetch('/api/models')
+      const res = await fetch(apiUrl('/api/models'), { headers: NGROK_HEADERS })
       const data = await res.json() as { models: AIModel[] }
       models.value = data.models
       if (data.models.length > 0 && !selectedModel.value) {
@@ -77,7 +102,7 @@ export const useChatStore = defineStore('chat', () => {
 
   async function loadHistory() {
     try {
-      const res = await fetch('/api/chat/history')
+      const res = await fetch(apiUrl('/api/chat/history'), { headers: NGROK_HEADERS })
       const raw = await res.json() as { messages?: Array<{ role: string; content: string }>; encrypted?: string }
 
       let data: { messages: Array<{ role: string; content: string }> }
@@ -129,6 +154,7 @@ export const useChatStore = defineStore('chat', () => {
       const payload = JSON.stringify({
         message: trimmed,
         model: selectedModel.value || undefined,
+        systemPrompt: systemPrompt.value.trim() || undefined,
       })
 
       let body: string
@@ -139,9 +165,9 @@ export const useChatStore = defineStore('chat', () => {
         body = payload
       }
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...NGROK_HEADERS },
         body,
         signal: abortController.signal,
       })
@@ -291,7 +317,7 @@ export const useChatStore = defineStore('chat', () => {
   async function stopGeneration() {
     if (!isStreaming.value) return
     try {
-      await fetch('/api/chat/stop', { method: 'POST' })
+      await fetch(apiUrl('/api/chat/stop'), { method: 'POST', headers: NGROK_HEADERS })
     } catch {
       //
     }
@@ -300,7 +326,7 @@ export const useChatStore = defineStore('chat', () => {
 
   async function clearHistory() {
     try {
-      await fetch('/api/chat', { method: 'DELETE' })
+      await fetch(apiUrl('/api/chat'), { method: 'DELETE', headers: NGROK_HEADERS })
       messages.value = []
       error.value = ''
     } catch {
@@ -315,9 +341,11 @@ export const useChatStore = defineStore('chat', () => {
     models,
     selectedModel,
     error,
+    systemPrompt,
     encryptionEnabled,
     setKey,
     clearKey,
+    setSystemPrompt,
     loadModels,
     loadHistory,
     sendMessage,

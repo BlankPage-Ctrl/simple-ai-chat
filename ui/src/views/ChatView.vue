@@ -4,6 +4,7 @@ import { useChatStore } from '@/stores/chat'
 import ChatMessage from '@/components/ChatMessage.vue'
 import ChatInput from '@/components/ChatInput.vue'
 import ModelSelector from '@/components/ModelSelector.vue'
+import SystemPromptControl from '@/components/SystemPromptControl.vue'
 import { Coffee, Trash2, X } from 'lucide-vue-next'
 
 const store = useChatStore()
@@ -41,6 +42,7 @@ onMounted(() => {
         <h1 class="header-title">Simple AI Chat</h1>
       </div>
       <div class="header-right">
+        <SystemPromptControl />
         <ModelSelector
           :models="store.models"
           :selected="store.selectedModel"
