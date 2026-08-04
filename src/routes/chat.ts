@@ -17,23 +17,27 @@ chat.post("/", async (c) => {
   try {
     let message: string | undefined;
     let modelName: string | undefined;
+    let systemPrompt: string | undefined;
 
     if (config.key) {
-      const raw = await c.req.json<{ encrypted?: string; message?: string; model?: string }>();
+      const raw = await c.req.json<{ encrypted?: string; message?: string; model?: string; systemPrompt?: string }>();
       if (raw.encrypted) {
         const key = await getCryptoKey();
         const decrypted = await decrypt(raw.encrypted, key);
         const parsed = JSON.parse(decrypted);
         message = parsed.message;
         modelName = parsed.model;
+        systemPrompt = parsed.systemPrompt;
       } else {
         message = raw.message;
         modelName = raw.model;
+        systemPrompt = raw.systemPrompt;
       }
     } else {
-      const body = await c.req.json<{ message: string; model?: string }>();
+      const body = await c.req.json<{ message: string; model?: string; systemPrompt?: string }>();
       message = body.message;
       modelName = body.model;
+      systemPrompt = body.systemPrompt;
     }
 
     if (!message?.trim()) {
@@ -65,6 +69,7 @@ chat.post("/", async (c) => {
     const result = streamText({
       model,
       messages: history.slice(0, -1),
+      instructions: systemPrompt?.trim() || undefined,
       abortSignal: abortController.signal,
       ...(config.timeoutTotal || config.timeoutChunk ? { timeout } : {}),
       onChunk: ({ chunk }) => {
