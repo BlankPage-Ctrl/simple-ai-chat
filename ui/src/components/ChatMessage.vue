@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ChatMessage } from '@/stores/chat'
+import { MarkdownRender } from 'markstream-vue'
+import 'markstream-vue/index.css'
 import { User, Bot, ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -60,7 +62,14 @@ const isStreamingText = computed(() => {
           <span class="dot" />
         </span>
         <template v-else-if="responseText">
-          {{ responseText }}
+          <MarkdownRender
+            v-if="message.role === 'assistant'"
+            :content="responseText"
+            :final="!isStreamingText"
+            mode="chat"
+            :render-code-blocks-as-pre="true"
+          />
+          <span v-else>{{ responseText }}</span>
           <span v-if="isStreamingText" class="cursor" />
         </template>
       </div>
@@ -106,6 +115,9 @@ const isStreamingText = computed(() => {
   border-radius: 18px;
   line-height: 1.55;
   word-wrap: break-word;
+}
+
+.message-row.user .bubble {
   white-space: pre-wrap;
 }
 
@@ -211,5 +223,93 @@ const isStreamingText = computed(() => {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+.content :deep(pre) {
+  background: var(--cream-50);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.content :deep(code) {
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.content :deep(:not(pre) > code) {
+  background: var(--cream-200);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.content :deep(p) {
+  margin: 0 0 8px;
+}
+
+.content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.content :deep(ul),
+.content :deep(ol) {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.content :deep(li) {
+  margin: 2px 0;
+}
+
+.content :deep(blockquote) {
+  border-left: 3px solid var(--color-primary);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--color-text-soft);
+}
+
+.content :deep(table) {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.content :deep(th),
+.content :deep(td) {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.content :deep(th) {
+  background: var(--cream-100);
+  font-weight: 600;
+}
+
+.content :deep(h1),
+.content :deep(h2),
+.content :deep(h3),
+.content :deep(h4),
+.content :deep(h5),
+.content :deep(h6) {
+  font-family: 'Varela Round', sans-serif;
+  margin: 12px 0 6px;
+}
+
+.content :deep(h1) { font-size: 1.4em; }
+.content :deep(h2) { font-size: 1.2em; }
+.content :deep(h3) { font-size: 1.1em; }
+
+.content :deep(a) {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.content :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 12px 0;
 }
 </style>
