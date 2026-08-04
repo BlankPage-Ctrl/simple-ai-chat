@@ -29,7 +29,7 @@ function genId(): string {
   return `msg_${nextId++}`
 }
 
-const BACKEND_URL = 'https://example.com'
+const BACKEND_URL = import.meta.env.VITE_API_URL || ''
 
 const NGROK_HEADERS = { 'ngrok-skip-browser-warning': '1' }
 

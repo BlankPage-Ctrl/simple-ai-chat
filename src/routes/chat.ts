@@ -62,17 +62,14 @@ chat.post("/", async (c) => {
     if (config.timeoutTotal) timeout.totalMs = config.timeoutTotal;
     if (config.timeoutChunk) timeout.chunkMs = config.timeoutChunk;
 
-    const systemMsg = systemPrompt?.trim()
-      ? [{ role: "system" as const, content: systemPrompt.trim() }]
-      : [];
-
     let accumulatedText = "";
     let chunkCount = 0;
     const SAVE_EVERY_N_CHUNKS = 7;
 
     const result = streamText({
       model,
-      messages: [...systemMsg, ...history.slice(0, -1)],
+      messages: history.slice(0, -1),
+      instructions: systemPrompt?.trim() || undefined,
       abortSignal: abortController.signal,
       ...(config.timeoutTotal || config.timeoutChunk ? { timeout } : {}),
       onChunk: ({ chunk }) => {
