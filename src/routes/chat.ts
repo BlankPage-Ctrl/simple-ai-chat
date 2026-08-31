@@ -3,6 +3,7 @@ import { streamText, type ModelMessage } from "ai";
 import { chatHistory, activeAbortControllers, CHAT_ID, getModel } from "../store";
 import { config } from "../config";
 import { deriveKey, encrypt, decrypt } from "../crypto";
+import type { OllamaOptions } from "../types";
 
 const chat = new Hono();
 
@@ -18,9 +19,18 @@ chat.post("/", async (c) => {
     let message: string | undefined;
     let modelName: string | undefined;
     let systemPrompt: string | undefined;
+    let requestThink: boolean | undefined;
+    let requestOptions: OllamaOptions | undefined;
 
     if (config.key) {
-      const raw = await c.req.json<{ encrypted?: string; message?: string; model?: string; systemPrompt?: string }>();
+      const raw = await c.req.json<{
+        encrypted?: string;
+        message?: string;
+        model?: string;
+        systemPrompt?: string;
+        think?: boolean;
+        options?: OllamaOptions;
+      }>();
       if (raw.encrypted) {
         const key = await getCryptoKey();
         const decrypted = await decrypt(raw.encrypted, key);
@@ -28,16 +38,28 @@ chat.post("/", async (c) => {
         message = parsed.message;
         modelName = parsed.model;
         systemPrompt = parsed.systemPrompt;
+        requestThink = parsed.think;
+        requestOptions = parsed.options;
       } else {
         message = raw.message;
         modelName = raw.model;
         systemPrompt = raw.systemPrompt;
+        requestThink = raw.think;
+        requestOptions = raw.options;
       }
     } else {
-      const body = await c.req.json<{ message: string; model?: string; systemPrompt?: string }>();
+      const body = await c.req.json<{
+        message: string;
+        model?: string;
+        systemPrompt?: string;
+        think?: boolean;
+        options?: OllamaOptions;
+      }>();
       message = body.message;
       modelName = body.model;
       systemPrompt = body.systemPrompt;
+      requestThink = body.think;
+      requestOptions = body.options;
     }
 
     if (!message?.trim()) {
@@ -61,6 +83,17 @@ chat.post("/", async (c) => {
     const timeout: { totalMs?: number; chunkMs?: number } = {};
     if (config.timeoutTotal) timeout.totalMs = config.timeoutTotal;
     if (config.timeoutChunk) timeout.chunkMs = config.timeoutChunk;
+    const effectiveThink = requestThink ?? config.think;
+    const effectiveOptions = requestOptions ?? config.ollamaOptions;
+    const providerOptions =
+      effectiveThink !== undefined || effectiveOptions !== undefined
+        ? ({
+            ollama: {
+              ...(effectiveThink !== undefined ? { think: effectiveThink } : {}),
+              ...(effectiveOptions !== undefined ? { options: effectiveOptions } : {}),
+            },
+          } as unknown as Record<string, unknown>)
+        : undefined;
 
     let accumulatedText = "";
     let chunkCount = 0;
@@ -71,6 +104,7 @@ chat.post("/", async (c) => {
       messages: history.slice(0, -1),
       instructions: systemPrompt?.trim() || undefined,
       abortSignal: abortController.signal,
+      ...(providerOptions ? { providerOptions: providerOptions as never } : {}),
       ...(config.timeoutTotal || config.timeoutChunk ? { timeout } : {}),
       onChunk: ({ chunk }) => {
         if (chunk.type === "text-delta") {
