@@ -31,7 +31,9 @@ if (config.mode === "combined") {
 
   Bun.serve({ port, fetch: app.fetch, idleTimeout: config.idleTimeout });
   console.log(`[combined] AI Chat server running on http://localhost:${port}`);
-  console.log(`Default model: ${defaultModel.name} (${defaultModel.modelId})`);
+  console.log(`Default model: ${defaultModel.name} (${defaultModel.modelId}) @ ${defaultModel.baseURL}`);
+  if (config.ollamaOptions) console.log(`Ollama options: ${JSON.stringify(config.ollamaOptions)}`);
+  if (config.think !== undefined) console.log(`Ollama think: ${config.think}`);
 
 } else if (config.mode === "backend-only") {
   const app = new Hono();
@@ -42,7 +44,9 @@ if (config.mode === "combined") {
 
   Bun.serve({ port, fetch: app.fetch, idleTimeout: config.idleTimeout });
   console.log(`[backend-only] API server running on http://localhost:${port}`);
-  console.log(`Default model: ${defaultModel.name} (${defaultModel.modelId})`);
+  console.log(`Default model: ${defaultModel.name} (${defaultModel.modelId}) @ ${defaultModel.baseURL}`);
+  if (config.ollamaOptions) console.log(`Ollama options: ${JSON.stringify(config.ollamaOptions)}`);
+  if (config.think !== undefined) console.log(`Ollama think: ${config.think}`);
   console.log(`Encryption: AES-256-GCM (key set)`);
 
 } else if (config.mode === "frontend-only") {

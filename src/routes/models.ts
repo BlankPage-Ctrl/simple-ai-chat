@@ -10,6 +10,8 @@ modelRoutes.get("/", (c) => {
     modelId: m.modelId,
     baseURL: m.baseURL,
     hasApiKey: !!m.apiKey,
+    options: m.options ?? null,
+    think: m.think ?? null,
   }));
   return c.json({ models: list });
 });
@@ -25,6 +27,8 @@ modelRoutes.post("/", async (c) => {
       baseURL: body.baseURL,
       apiKey: body.apiKey || "",
       modelId: body.modelId,
+      options: body.options,
+      think: body.think,
     });
     return c.json({ ok: true, message: `Model "${body.name}" added` });
   } catch (error: any) {

@@ -1,4 +1,4 @@
-import type { AIModel } from "./types";
+import type { AIModel, OllamaOptions } from "./types";
 import { parseDuration } from "./duration";
 
 export type AppMode = "combined" | "backend-only" | "frontend-only";
@@ -15,6 +15,8 @@ interface CLIConfig {
   key: string;
   backendUrl: string;
   port: number;
+  ollamaOptions?: OllamaOptions;
+  think?: boolean;
 }
 
 function parseArgs(): CLIConfig {
@@ -59,11 +61,89 @@ function parseArgs(): CLIConfig {
     process.exit(1);
   }
 
+  // --options / OLLAMA_OPTIONS : JSON string for Ollama Modelfile options
+  // e.g. --options='{"repeat_penalty":1.1,"num_ctx":8192,"seed":123}'
+  // Also accepts JS-like shorthand: --options="{repeat_penalty: 1.1, num_ctx: 8192}"
+  // and env OLLAMA_OPTIONS / AI_OPTIONS
+  const rawOptions =
+    map.get("options") ??
+    process.env.OLLAMA_OPTIONS ??
+    process.env.AI_OPTIONS ??
+    "";
+  let ollamaOptions: OllamaOptions | undefined;
+  if (rawOptions) {
+    try {
+      const normalized = rawOptions
+        // quote unquoted keys: {repeat_penalty: 1.1} -> {"repeat_penalty": 1.1}
+        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+        // single quotes -> double quotes
+        .replace(/'/g, '"');
+      const parsed = JSON.parse(normalized);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("options must be a JSON object");
+      }
+      const allowedKeys = new Set([
+        "num_ctx",
+        "repeat_last_n",
+        "repeat_penalty",
+        "temperature",
+        "seed",
+        "stop",
+        "num_predict",
+        "top_k",
+        "top_p",
+        "min_p",
+      ]);
+      ollamaOptions = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (!allowedKeys.has(k)) {
+          console.warn(`[config] --options: ignoring unknown key "${k}" (allowed: ${[...allowedKeys].join(", ")})`);
+          continue;
+        }
+        (ollamaOptions as Record<string, unknown>)[k] = v;
+      }
+      if (Object.keys(ollamaOptions).length === 0) ollamaOptions = undefined;
+    } catch (e: unknown) {
+      console.error(`Error: --options invalid JSON: ${rawOptions}`);
+      console.error(`  Expected like: --options='{"repeat_penalty":1.1,"num_ctx":8192,"seed":123}'`);
+      console.error(`  Detail: ${(e as Error).message}`);
+      process.exit(1);
+    }
+  }
+
+  // --think / --no-think / OLLAMA_THINK / AI_THINK : enable/disable reasoning
+  //   --think            -> true
+  //   --think=true/false -> boolean
+  //   --no-think         -> false
+  //   --think=0/1        -> boolean
+  // If unset, think is undefined (provider default = model decides)
+  const rawThink =
+    map.has("no-think") ? "false" :
+    map.get("think") ??
+    process.env.OLLAMA_THINK ??
+    process.env.AI_THINK ??
+    undefined;
+  let think: boolean | undefined;
+  if (rawThink !== undefined) {
+    const v = rawThink.trim().toLowerCase();
+    if (["true", "1", "yes", "on", ""].includes(v)) think = true;
+    else if (["false", "0", "no", "off"].includes(v)) think = false;
+    else {
+      console.error(`Error: --think value must be boolean (true/false), got "${rawThink}"`);
+      process.exit(1);
+    }
+  }
+
   return {
     defaultName: map.get("default-name") ?? process.env.AI_MODEL_NAME ?? "default",
-    defaultBaseURL: map.get("default-base-url") ?? process.env.AI_BASE_URL ?? "https://api.example.com/v1",
-    modelId: map.get("model-id") ?? process.env.AI_MODEL_ID ?? "/default-model/somemodelid",
-    defaultApiKey: map.get("default-api-key") ?? process.env.AI_API_KEY ?? "default-api-key",
+    defaultBaseURL:
+      map.get("default-base-url") ??
+      map.get("ollama-base-url") ??
+      process.env.OLLAMA_BASE_URL ??
+      process.env.AI_BASE_URL ??
+      "http://localhost:11434/api",
+    modelId: map.get("model-id") ?? process.env.AI_MODEL_ID ?? "llama3.2",
+    defaultApiKey: map.get("default-api-key") ?? process.env.AI_API_KEY ?? "",
     timeoutTotal: parseDuration(map.get("timeout-total") ?? process.env.AI_TIMEOUT_TOTAL ?? "0"),
     timeoutChunk: parseDuration(map.get("timeout-chunk") ?? process.env.AI_TIMEOUT_CHUNK ?? "0"),
     idleTimeout: Math.min(Math.round(parseDuration(map.get("idle-timeout") ?? process.env.IDLE_TIMEOUT ?? "4m") / 1000), 255),
@@ -71,6 +151,8 @@ function parseArgs(): CLIConfig {
     key,
     backendUrl,
     port: Number(map.get("port")) || Number(process.env.PORT) || 3000,
+    ollamaOptions,
+    think,
   };
 }
 
@@ -82,5 +164,7 @@ export function createDefaultModel(): AIModel {
     baseURL: config.defaultBaseURL,
     apiKey: config.defaultApiKey,
     modelId: config.modelId,
+    options: config.ollamaOptions,
+    think: config.think,
   };
 }
